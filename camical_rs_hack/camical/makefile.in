@@ -1,0 +1,11 @@
+COMPILE=@COMPILE@
+all: camical
+camical: camical.o makefile@DEPOBJS@
+	$(COMPILE) -o $@ camical.o@LIBDIRS@@LIBS@
+camical.o: camical.cpp config.h makefile@DEPHDRS@
+	$(COMPILE) -c camical.cpp@INCDIRS@
+config.h: camical.cpp makefile
+	./mkconfig.sh > $@
+clean:
+	rm -f camical.o camical makefile config.h
+.PHONY: all clean

@@ -1,0 +1,4 @@
+all:
+	@COMPILE@ -c aiger.c
+clean:
+	rm -f makefile aiger.o
