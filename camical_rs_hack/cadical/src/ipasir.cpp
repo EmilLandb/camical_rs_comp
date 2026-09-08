@@ -8,7 +8,6 @@ const char *ipasir_signature () { return ccadical_signature (); }
 void *ipasir_init () {
   CCaDiCaL *cadical = ccadical_init ();
   ccadical_set_option (cadical, "factor", 0);
-  ccadical_set_option (cadical, "stats", 2); // TODO: remove
   return cadical;
 }
 
@@ -45,10 +44,4 @@ void ipasir_set_learn (void *solver, void *state, int max_length,
                        void (*learn) (void *state, int *clause)) {
   ccadical_set_learn ((CCaDiCaL *) solver, state, max_length, learn);
 }
-
-// TODO: remove
-void ipasir_print_stats (void *solver) {
-  ccadical_print_statistics ((CCaDiCaL *) solver);
-}
-
 }

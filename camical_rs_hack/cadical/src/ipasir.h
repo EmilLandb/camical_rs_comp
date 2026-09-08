@@ -28,8 +28,6 @@ void ipasir_set_terminate (void *solver, void *state,
 void ipasir_set_learn (void *solver, void *state, int max_length,
                        void (*learn) (void *state, int *clause));
 
-// TODO: remove this
-void ipasir_print_stats (void *solver);
 /*------------------------------------------------------------------------*/
 #ifdef __cplusplus
 }
