@@ -1,30 +1,16 @@
 #include "internal.hpp"
 
 namespace CaDiCaL {
-/*
-void External::push_zero_on_extension_stack () {
-  extension.push_back (0);
-  LOG ("pushing 0 on extension stack");
-}
-*/
+
+
 void External::push_zero_on_extension_stack (int ewit) {
   assert (ewit);
   const unsigned uwit = elit2ulit (ewit);
   if (uwit >= witness_stacks.size ())
     witness_stacks.resize (uwit + 1); // the witness bitset is resized in mark
   witness_stacks[uwit].push_back (0);
-  LOG ("pushing 0 on witness stack %d (external)", ewit);
+  LOG ("pushing 0 on witness_stacks[%u] (external %d)", uwit, ewit);
 }
-
-/*
-void External::push_id_on_extension_stack (int64_t id) {
-  const uint32_t higher_bits = static_cast<int> (id << 32);
-  const uint32_t lower_bits = (id & (((int64_t) 1 << 32) - 1));
-  extension.push_back (higher_bits);
-  extension.push_back (lower_bits);
-  LOG ("pushing id %" PRIu64 " = %d + %d", id, higher_bits, lower_bits);
-}
-*/
 
 void External::push_id_on_extension_stack (int ewit, int64_t id) {
   assert (ewit);
@@ -32,12 +18,10 @@ void External::push_id_on_extension_stack (int ewit, int64_t id) {
   const uint32_t lower_bits = (id & (((int64_t) 1 << 32) - 1));
   const unsigned uwit = elit2ulit (ewit);
   assert (uwit < witness_stacks.size ());
-  //if (uwit >= witness_stacks.size ())
-  //  witness_stacks.resize (uwit + 1); // the witness bitset is resized in mark
   witness_stacks[uwit].push_back (higher_bits);
   witness_stacks[uwit].push_back (lower_bits);
-  LOG ("pushing id %" PRIu64 " = %d + %d on witness stack %d (external)", 
-      id, higher_bits, lower_bits, ewit);
+  LOG ("pushing id %" PRIu64 " = %d + %d on witness_stacks[%u] (external %d)", 
+      id, higher_bits, lower_bits, uwit, ewit);
 }
 
 void External::push_stamp_on_extension_stack (int ewit) {
@@ -45,18 +29,8 @@ void External::push_stamp_on_extension_stack (int ewit) {
   const unsigned uwit = elit2ulit (ewit);
   assert (uwit < witness_stacks.size ());
   witness_stacks[uwit].push_back (++stamp);
-  LOG ("pushing time stamp %u on witness stack %d (external)", stamp, ewit);
+  LOG ("pushing time stamp %u on witness_stacks[%u] (external %d)", stamp, uwit, ewit);
 }
-/*
-void External::push_clause_literal_on_extension_stack (int ilit) {
-  assert (ilit);
-  const int elit = internal->externalize (ilit);
-  assert (elit);
-  extension.push_back (elit);
-  LOG ("pushing clause literal %d on extension stack (internal %d)", elit,
-       ilit);
-}
-*/
 
 void External::push_clause_literal_on_extension_stack (int ewit, int ilit) {
   assert (ilit);
@@ -65,27 +39,10 @@ void External::push_clause_literal_on_extension_stack (int ewit, int ilit) {
   assert (elit);
   const unsigned uwit = elit2ulit (ewit);
   assert (uwit < witness_stacks.size ());
-  //if (uwit >= witness_stacks.size ())
-  //  witness_stacks.resize (uwit + 1); // the witness bitset is resized in mark
   witness_stacks[uwit].push_back (elit);
-  LOG ("pushing clause literal %d on witness stack %d (external) (internal %d)", elit, 
-       ewit , ilit);
+  LOG ("pushing clause literal %d on witness_stacks[%u] (external %d) (internal %d)", elit, 
+       uwit, ewit, ilit);
 }
-
-/*
-void External::push_witness_literal_on_extension_stack (int ilit) {
-  assert (ilit);
-  const int elit = internal->externalize (ilit);
-  assert (elit);
-  extension.push_back (elit);
-  LOG ("pushing witness literal %d on extension stack (internal %d)", elit,
-       ilit);
-  if (marked (witness, elit))
-    return;
-  LOG ("marking witness %d", elit);
-  mark (witness, elit);
-}
-*/
 
 // The extension stack allows to reconstruct a satisfying assignment for the
 // original formula after removing eliminated clauses.  This was pioneered
@@ -93,17 +50,6 @@ void External::push_witness_literal_on_extension_stack (int ilit) {
 // inprocessing paper, published at IJCAR'12.  This first function adds a
 // clause to this stack.  First the blocking or eliminated literal is added,
 // and then the rest of the clause.
-/*
-void External::push_clause_on_extension_stack (Clause *c) {
-  internal->stats.weakened++;
-  internal->stats.weakened_lengths += c->size;
-  push_zero_on_extension_stack ();
-  push_id_on_extension_stack (c->id);
-  push_zero_on_extension_stack ();
-  for (const auto &lit : *c)
-    push_clause_literal_on_extension_stack (lit);
-}
-*/
 
 // Push a clauses id and literals on witness stack x
 void External::push_clause_on_extension_stack (int wit, Clause *c) {
@@ -122,33 +68,11 @@ void External::push_clause_on_extension_stack (int wit, Clause *c) {
     push_clause_literal_on_extension_stack (ewit, lit);
   
   // Now also mark the witness
-  if (!marked (witness, ewit))
+  if (!marked (witness, ewit)) {
+    LOG ("marking as witness %d (external)", ewit);
     mark (witness, ewit);
-  witness_order.push_back (ewit);
+  }
 }
-
-/*
-void External::push_clause_on_extension_stack (Clause *c, int pivot) {
-  push_zero_on_extension_stack ();
-  push_witness_literal_on_extension_stack (pivot);
-  push_clause_on_extension_stack (c);
-}
-*/
-
-/*
-void External::push_binary_clause_on_extension_stack (int64_t id, int pivot,
-                                                      int other) {
-  internal->stats.weakened++;
-  internal->stats.weakened_lengths += 2;
-  push_zero_on_extension_stack ();
-  push_witness_literal_on_extension_stack (pivot);
-  push_zero_on_extension_stack ();
-  push_id_on_extension_stack (id);
-  push_zero_on_extension_stack ();
-  push_clause_literal_on_extension_stack (pivot);
-  push_clause_literal_on_extension_stack (other);
-}
-*/
 
 void External::push_binary_clause_on_extension_stack (int64_t id, int wit,
                                                       int other) {
@@ -166,55 +90,81 @@ void External::push_binary_clause_on_extension_stack (int64_t id, int wit,
   push_clause_literal_on_extension_stack (ewit, other);
 
   // Mark the witness
-  if (!marked (witness, ewit))
+  if (!marked (witness, ewit)) {
+    LOG ("marking as witness %d (external)", ewit);
     mark (witness, ewit);
-  witness_order.push_back (ewit);
+  }
 }
 
-void External::push_shared_clause_on_extension_stack (vector<int> wits, 
-                                                      Clause *c) {
-  LOG (wits, "pushing shared clause references on witness stacks");
-  // create the shared clause
-  const size_t bytes = sizeof (SharedClause) + (c->size + 1) * sizeof (int);
+External::SharedStack* External::create_shared_stack (const vector<int> &iwit_cube) {
+  
+  SharedStack *ss = new SharedStack;
+  
+  ss->backlinks = 0;
+  ss->stamp = ++stamp;
 
-  SharedClause *sc = (SharedClause*) new char[bytes];
-  DeferDeleteArray<char> shared_delete ((char *) sc);
-  sc->id = c->id;
-  sc->backlinks = wits.size ();
-  sc->force_witness = false;
-  sc->stale = false;
+  const uintptr_t ptr = reinterpret_cast<uintptr_t> (ss);
+  const int upper = static_cast<int> (ptr >> 32);
+  const int lower = static_cast<int> (ptr & 0xffffffff);
 
-  for (int i = 0; i < c->size; ++i) {
-    int ilit = c->literals[i];
-    sc->elits[i] = internal->externalize (ilit);
-  }
-  sc->elits[c->size] = 0;
-  const uintptr_t ptr = reinterpret_cast<uintptr_t> (sc);
-  const uint32_t higher_bits = ptr >> 32;
-  const uint32_t lower_bits = ptr & 0xffffffffu;
-  // now connect dummy clauses
-  for (auto &wit : wits) {
-    const int ewit = internal->externalize (wit);
+  // push a reference to all witness stacks of literals in the cube
+  for (const auto &iwit : iwit_cube) {
+    const int ewit = internal->externalize (iwit);
+    assert (ewit);
     const unsigned uwit = elit2ulit (ewit);
-    
+
+    ss->witness_cube.push_back (ewit);
+
+    if (uwit >= witness_stacks.size ())
+      witness_stacks.resize (uwit + 1);
     if (!marked (witness, ewit))
       mark (witness, ewit);
-    
-    witness_order.push_back (ewit);
 
-    if (uwit >= witness_stacks.size ()) 
-      witness_stacks.resize (uwit + 1); // the witness bitset is resized in mark
+    vector<int> &stack = witness_stacks[uwit];
 
-    witness_stacks[uwit].push_back (0);
-    witness_stacks[uwit].push_back (0);
-    witness_stacks[uwit].push_back (0);
-    witness_stacks[uwit].push_back (higher_bits);
-    witness_stacks[uwit].push_back (lower_bits);
+    // 0 0 0 p_u p_l
+    stack.push_back (0);
+    stack.push_back (0);
+    stack.push_back (0);
+    stack.push_back (upper);
+    stack.push_back (lower);
+
+    ss->backlinks++;
   }
-
-  shared_delete.release ();
+  return ss;
 }
 
+void External::push_shared_clause (SharedStack *ss, Clause *c) {
+  internal->stats.weakened++;
+  internal->stats.weakened_lengths += c->size;
+
+  vector<int> &stack = ss->clause_data;
+
+  const uint32_t higher_bits = static_cast<int> (c->id >> 32);
+  const uint32_t lower_bits = (c->id & (((int64_t) 1 << 32) - 1));
+  // 0 id_u id_l 0 l1 l2 .. lk
+  stack.push_back (0);
+  LOG (ss->witness_cube, "pushing id %" PRIu64 " = %d + %d on shared stack ", 
+       c->id, higher_bits, lower_bits);
+  stack.push_back (higher_bits);
+  stack.push_back (lower_bits);
+  stack.push_back (0);
+  for (const auto &ilit : *c) {
+    assert (ilit);
+    const int elit = internal->externalize (ilit);
+    assert (elit);
+    stack.push_back (elit);
+    LOG ("pushing clause literal %d (internal %d) on shared stack", 
+          elit, ilit);
+  }
+}
+
+void External::create_shared_stack_and_push_clause (
+    const vector<int> &iwit_cube, Clause *c) {
+  LOG ("Creating a shared stack for a single clause with witness cube.");
+  SharedStack *ss = create_shared_stack (iwit_cube);
+  push_shared_clause (ss, c);
+}
 /*------------------------------------------------------------------------*/
 // TODO: This needs updating
 // the calls to init are used in the copy test, should never trigger during
@@ -251,7 +201,35 @@ void External::push_external_clause_and_witness_on_extension_stack (
 }
 
 /*------------------------------------------------------------------------*/
-
+uint32_t External::r_timestamp (const vector<int> &stack, uint32_t idx) {
+  assert (idx <= stack.size ());
+  assert (idx);
+  // case 1 shared stack: 0 0 0 ptr_u ptr_l .
+  //                                        ^
+  if (idx >= 5 &&
+      !stack[idx - 5] &&
+      !stack[idx - 4] &&
+      !stack[idx - 3]) {
+    LOG ("r_timestamp shared clause detected.");
+    const uintptr_t ptr = (static_cast<uintptr_t> (
+                          static_cast<uint32_t> (stack[idx - 2])) << 32) |
+                          static_cast<uint32_t> (stack[idx - 1]);
+    SharedStack *ss = reinterpret_cast<SharedStack *> (ptr);
+    return ss->stamp; 
+  }
+  // case 2 regular: 0 ts idu idl 0 l1 .. lk .
+  //                                         ^
+  uint32_t p = idx - 1; // last literal of the clause
+  while (stack[p])
+    --p;
+  // p is on the 0 after the literals
+  assert (p >= 4);
+  assert (!stack[p]);
+  assert (!stack[p - 4]);
+  return static_cast<uint32_t> (stack[p - 3]);
+}
+/*------------------------------------------------------------------------*/
+// TODO: Update description
 // This is the actual extension process. It goes backward over the clauses
 // on the extension stack and flips the assignment of one of the blocking
 // literals in the conditional autarky stored before the clause.  In the
@@ -261,108 +239,166 @@ void External::push_external_clause_and_witness_on_extension_stack (
 // contain an arbitrary set of literals.  We are using the more general
 // witness reconstruction here which for instance would also work for
 // super-blocked or set-blocked clauses.
-/*
-  void External::extend () {
 
-    assert (!extended);
-    START (extend);
-    internal->stats.extensions++;
+void External::extend_shared_stack (SharedStack *ss, unsigned uwit, ExtendStats &stats) {
+  LOG (ss->witness_cube, "Extending shared stack of size %zu with witness cube", 
+       ss->clause_data.size ());
+#ifndef QUIET
+  stats.extension_size += ss->witness_cube.size ();
+  stats.extension_size += ss->clause_data.size ();
+#endif
+  
 
-    PHASE ("extend", internal->stats.extensions,
-           "mapping internal %d assignments to %d assignments",
-           internal->max_var, max_var);
-
-  #ifndef QUIET
-    int64_t updated = 0;
-  #endif
-    for (unsigned i = 1; i <= (unsigned) max_var; i++) {
-      const int ilit = e2i[i];
-      if (!ilit)
-        continue;
-      if (i >= vals.size ())
-        vals.resize (i + 1, false);
-      vals[i] = (internal->val (ilit) > 0);
-  #ifndef QUIET
-      updated++;
-  #endif
+  // first check the cube for being satisfied. Also check if this stack has been
+  // already been scheduled for extension.
+  vector<int> &witness_cube = ss->witness_cube;
+  bool satisfied = true;
+  for (const auto &ewit : witness_cube) {
+    // check if the shared stack was already extended
+    const unsigned other_uwit = elit2ulit (ewit);
+    if (other_uwit != uwit && priority[other_uwit] <= ss->stamp) { 
+      satisfied = true;
+      break;
     }
-    PHASE ("extend", internal->stats.extensions,
-           "updated %" PRId64 " external assignments", updated);
-    PHASE ("extend", internal->stats.extensions,
-           "extending through extension stack of size %zd",
-           extension.size ());
-    const auto begin = extension.begin ();
-    auto i = extension.end ();
-  #ifndef QUIET
-    int64_t flipped = 0;
-  #endif
-    while (i != begin) {
-      bool satisfied = false;
-      int lit;
-      assert (i != begin);
-      while ((lit = *--i)) {
-        if (satisfied)
-          continue;
-        if (ival (lit) == lit)
-          satisfied = true;
-        assert (i != begin);
-      }
-      assert (i != begin);
-      LOG ("id=%" PRId64, ((int64_t) *i << 32) + *(i - 1));
-      assert (*i || *(i - 1));
-      --i;
-      assert (i != begin);
-      --i;
-      assert (i != begin);
-      assert (!*i);
-      --i;
-      assert (i != begin);
-      if (satisfied)
-        while (*--i)
-          assert (i != begin);
-      else {
-        while ((lit = *--i)) {
-          const int tmp = ival (lit); // not 'signed char'!!!
-          if (tmp != lit) {
-            LOG ("flipping blocking literal %d", lit);
-            assert (lit);
-            assert (lit != INT_MIN);
-            size_t idx = abs (lit);
-            if (idx >= vals.size ())
-              vals.resize (idx + 1, false);
-            vals[idx] = !vals[idx];
-            internal->stats.extended++;
-  #ifndef QUIET
-            flipped++;
-  #endif
-          }
-          assert (i != begin);
-        }
-      }
-    }
-    PHASE ("extend", internal->stats.extensions,
-           "flipped %" PRId64 " literals during extension", flipped);
-    extended = true;
-    LOG ("extended");
-    STOP (extend);
+
+    if (ival (ewit) != ewit)  // Witness falsified
+      satisfied = false;
   }
-*/
+  if (satisfied) {
+    LOG ("Shared stack clauses are skipped. (already scheduled or satisfied)");
+    return;
+  }
+  // The witness cube is not fully assigned. Therefore we need to check for
+  // unsatisfied clauses.
+  vector<int> &stack = ss->clause_data;
+  auto p = stack.end ();
+  auto begin = stack.begin ();
+  bool assign_witness = false;
+  // 0 id_u id_l 0 l1 l2 ... lk
+  // ^
+  while (p != begin) {
+    // p is at end of stack or the first 0 of the previous clause
+    bool clause_satisfied = false;
+    while (*--p) { // go through all literals
+      int elit = *p;
+      // If lit is satisfied we can just skip the clause
+      if (ival (elit) == elit)
+        clause_satisfied = true;
+    }
+    // We have found a clause that is not satisfied -> assign the witness
+    if (!clause_satisfied) {
+      assign_witness = true;
+      break;
+    }
+    // 0 id_u id_l 0
+    //             ^ 
+    p -= 3;
+  }
+
+  if (assign_witness) {
+    for (const auto &ewit : witness_cube) {
+      if (ival (ewit) == ewit)
+        continue;
+      LOG ("flipping witness literal %d", ewit);
+      assert (ewit);
+      assert (ewit != INT_MIN);
+      size_t idx = abs (ewit);
+      if (idx >= vals.size ())
+        vals.resize (idx + 1, false);
+      vals[idx] = !vals[idx];
+      internal->stats.extended++;
+#ifndef QUIET
+      stats.flipped++;
+#endif
+    }
+  }
+}
+
+void External::extend_next (unsigned uwit, ExtendHeap &extend_heap, 
+                            ExtendStats &stats) {
+  vector<int> &stack = witness_stacks[uwit];
+  uint32_t idx = ws_index[uwit];
+  uint32_t ts = 0;  
+  while (idx) {
+    assert (idx >= 5);
+    const bool shared_ref = !stack[idx - 3] && 
+                            !stack[idx - 4] && 
+                            !stack[idx - 5];                        
+    if (shared_ref) {
+      const uintptr_t ptr =  (static_cast<uintptr_t> (
+                              static_cast<uint32_t> (stack[idx - 2])) << 32) |
+                              static_cast<uint32_t> (stack[idx - 1]);
+      SharedStack *ss = reinterpret_cast<SharedStack *> (ptr);
+
+      ts = ss->stamp;
+
+      // If there is a newer event belonging to another witness,
+      // this event has to wait.
+      if (!extend_heap.empty () &&
+          ts < priority[extend_heap.top ()])
+        break;
+
+      extend_shared_stack (ss, uwit, stats);
+      stats.events++;
+      idx -= 5;
+    } else {
+      uint32_t p = idx - 1; // p points to the last literal
+      assert (stack[p]);
+      bool satisfied = false;
+
+      while (stack[p]) {
+        const int elit = stack[p];
+        if (!satisfied && ival (elit) == elit)
+          satisfied = true;
+        --p;
+      }
+      assert (p >= 4); // p is on 0 after the id parts (before the literals)
+
+      ts = static_cast<uint32_t> (stack[p - 3]); 
+
+      if (!extend_heap.empty () &&
+          ts < priority[extend_heap.top ()])
+        break;
+
+      if (!satisfied) {
+        const int sign = (int) (uwit & 1);
+        const int ewit = ((int) (uwit >> 1) + 1 ^ -sign) + sign;
+        LOG ("ewit %d computed from uwit %u", ewit, uwit);
+        assert (ival (ewit) != ewit);
+        const size_t var = abs (ewit);
+        if (var >= vals.size ())
+          vals.resize (var + 1, false);
+        vals[var] = !vals[var];
+        internal->stats.extended++;
+#ifndef QUIET
+        stats.flipped++;
+#endif
+      }
+      stats.events++;
+      idx = p - 4;
+    }                   
+  }
+  ws_index[uwit] = idx;
+  if (idx) {
+    priority[uwit] = ts;
+    extend_heap.push (uwit);
+#ifndef QUIET
+      stats.pushed++;
+#endif
+  }
+}
 
 void External::extend () {
   assert (!extended);
-  START (extend);
+  PROFILE_SCOPE (extend);
   internal->stats.extensions++;
-  // TODO: Maybe remove stat later.
-  size_t witness_order_size = witness_order.size ();
-  if (witness_order_size > internal->stats.extensionmaxwit)
-    internal->stats.extensionmaxwit = witness_order_size;
 
   PHASE ("extend", internal->stats.extensions,
          "mapping internal %d assignments to %d assignments",
          internal->max_var, max_var);
-#ifndef QUIET
-  int64_t updated = 0;
-#endif
+
+  ExtendStats stats = {};
+
   // Copy the internal assignment into an external one
   for (unsigned i = 1; i <= (unsigned) max_var; i++) { 
     const int ilit = e2i[i];
@@ -372,253 +408,308 @@ void External::extend () {
       vals.resize (i + 1, false);
     vals[i] = (internal->val (ilit) > 0);
 #ifndef QUIET
-    updated++;
+    stats.updated++;
 #endif
   }
-  // TODO: If we keep track of the number of unfinished witness_stacks 
-  //       we can stop as soon as we have finished all.
-  vector<size_t> ws_index (witness_stacks.size ()); // initialize to size of witness_stacks
-  int nstacks = 0; // Number of stacks that still have clauses to process
-  size_t extension_size = 0;
-  for (size_t i = 0; i < witness_stacks.size (); i++) {
-    const size_t stack_size = witness_stacks[i].size ();
 
-    if (stack_size)
-      nstacks++;
+  // Initialize the extension state.
+  assert (ws_index.empty ());
+  assert (priority.empty ());
+  
+  ExtendHeap extend_heap {
+    PriorityGreater (priority)
+  };
 
-    ws_index[i] = stack_size;
-    extension_size += stack_size;
-  }
+  ws_index.resize (witness_stacks.size ());
+  priority.resize (witness_stacks.size ());
 
-  PHASE ("extend", internal->stats.extensions,
-         "updated %" PRId64 " external assignments", updated);
-  PHASE ("extend", internal->stats.extensions,
-         "extending through extension stack of size %zd",
-         extension_size);
+  for (unsigned uwit = 0; uwit < witness_stacks.size (); uwit++) {
+    vector<int> &stack = witness_stacks[uwit];
 #ifndef QUIET
-  int64_t flipped = 0;
+    stats.extension_size += stack.size ();
 #endif
-
-  for (size_t i = witness_order.size (); i-- > 0;) { // points behind last element but we decrement first
-    if (!nstacks) { // No more work. Just possibly more entries in witness_order
-      LOG ("Finished extending after seeing %zu entries", witness_order_size - i);
-      break; // TODO: We could also compact the prefix but i am unsure whether this
-             // this early exit is practical at all.
-    }
-    int ewit = witness_order[i];
-    const unsigned uwit = elit2ulit (ewit);
-    if (ws_index[uwit] == 0) // the entry is stale. Skip it.
+    if (stack.empty ())
       continue;
-    vector<int>& wstack = witness_stacks[uwit];
-    LOG (wstack, "witness_stack[%u]", uwit);
-    bool satisfied = false;
-    if (ival (ewit) == ewit)  // Witness satisfied
-      satisfied = true;
-    // Else we need to check the last clause of the corresponding witness stack
-    size_t idx = ws_index[uwit]; // get the current "end" of the corresp. witness stack
-    // Now it is time to parse the next clause and update ws_index
-    // The current situation should look something like:
-    //  ts idu idl 0 l1 l2 l3 ... lk .
-    //                               ^
-    //                              idx
+    uint32_t idx = stack.size ();
+    ws_index[uwit] = idx;
+    const uint32_t ts = r_timestamp (stack, idx);
+    assert (ts);
 
-    // We look ahead to detect dummy clauses which look like this:
-    // 0 0 0 ptr_u ptr_l 
-    // This cannot occur for a regular clause so it happens exactly in 
-    // the shared clause case.
-    const bool shared = !wstack[idx - 3] && 
-                        !wstack[idx - 4] && 
-                        !wstack[idx - 5];
-    if (shared) {
-      LOG ("shared clause detected.");
-      const uintptr_t ptr = (static_cast<uintptr_t> (wstack[idx - 2]) << 32) |
-                             static_cast<uint32_t> (wstack[idx - 1]);
-
-      SharedClause *sc = reinterpret_cast<SharedClause*> (ptr);
-      LOG ("id of clause: %lld", sc->id);
-      if (sc->stale) {
-        LOG ("clause is stale. Skipping...");
-        continue;
-      }
-      // Careful. If ewit is already assigned we would flip it instead
-      else if (sc->force_witness && (ival (ewit) != ewit)) { 
-        LOG ("Witness is forced since part of a witness cube");
-        satisfied = false;
-      }
-      else {
-        LOG ("Checking satisfaction of shared clause");
-        for (int *p = sc->elits; *p; ++p) {
-          int elit = *p;
-          if (ival (elit) == elit) {
-            LOG ("clause satisfied by %d (elit)", elit);
-            satisfied = true;
-            break;
-          }
-          LOG ("not sat elit %d", elit);
-        }
-        if (!satisfied) {
-          LOG ("clause is not satisfied!");
-          sc->force_witness = true;
-        }
-      }
-      assert (idx >= 5);
-      ws_index[uwit] = idx - 5; // advance index. 2 pointer parts + 2 zeros
-    }
-    else {
-      while (wstack[--idx] != 0) { // go to next '0' then should come the id
-        if (satisfied)
-          continue;
-        int elit = wstack[idx];
-        // If lit is satisfied we can just skip the clause
-        if (ival (elit) == elit)
-          satisfied = true;
-      }
-      // now idx should be the index of the '0' before the ts idu idl part. update.
-      assert (idx >= 4);
-      ws_index[uwit] = idx - 4; // leave the index directly before the next clause, i.e. on '0'
-    }
-    if (!ws_index[uwit]) { // Stack is processed. No more extensions with the current witness
-      LOG ("witness stack of %d is completely processed", ewit);
-      nstacks--; 
-    }
- 
-    // and check whether we need to flip the witness
-    if (!satisfied) {
-      assert (ival (ewit) != ewit); // Witness should not be assigned
-      size_t var = abs (ewit); // Get the variable 
-      if (var >= vals.size ()) // Check whether we need to resize vals
-        vals.resize (var + 1, false);
-      LOG ("assiging ewit %d", ewit);
-      vals[var] = !vals[var]; // Set to true
-      internal->stats.extended++;
-#ifndef QUIET
-      flipped++;
-#endif
-    }
+    priority[uwit] = ts;
+    extend_heap.push (uwit);
+    stats.pushed++;
   }
+
+  while (!extend_heap.empty ()) {
+    const unsigned uwit = extend_heap.top ();
+    extend_heap.pop ();
+    LOG ("popped %u (unsigned) from heap", uwit);
+    extend_next (uwit, extend_heap, stats);
+  }
+
+  ws_index.clear ();
+  priority.clear ();
+
+  // TODO: add stats and commit extend stats here
+  internal->stats.extension_events += stats.events;
+  internal->stats.extension_heap_pushed += stats.pushed;
   PHASE ("extend", internal->stats.extensions,
-         "flipped %" PRId64 " literals during extension", flipped);
+         "extended through extension stack of size %lld", stats.extension_size);
+  PHASE ("extend", internal->stats.extensions,
+         "flipped %" PRId64 " literals during extension", stats.flipped);
   extended = true;
   LOG ("extended");
-  STOP (extend);
 }
 
-/*------------------------------------------------------------------------*/
-// For now this only works for single witnessed clauses.
-// For witness cube clauses there is still a problem since we have to sweep
-// across the ends of all witness stacks to see if there is a shared clause and
-// thereby collect all witnesses in the cube.
-bool External::traverse_witnesses_backward (WitnessIterator &it) {
-  if (internal->unsat)
+bool External::traverse_shared_stack_backward (WitnessIterator &it, SharedStack *ss, unsigned uwit) {
+  vector<int> &witness_cube = ss->witness_cube;
+  if (witness_cube.empty ()) // stale shared stack. Skip it.
     return true;
-  vector<int> clause, witness;
-  //const auto begin = extension.begin (); 
-  //auto i = extension.end ();
-  vector<size_t> ws_index (witness_stacks.size ()); // initialize to size of witness_stacks
-  for (size_t i = 0; i < witness_stacks.size (); i++) {
-    const size_t stack_size = witness_stacks[i].size ();
-    ws_index[i] = stack_size;
+  for (const auto &ewit : witness_cube) {
+    const unsigned other_uwit = elit2ulit (ewit);
+    if (other_uwit != uwit && priority[other_uwit] <= ss->stamp)
+      return true;
   }
-  for (size_t i = witness_order.size (); i-- > 0;) {
-    int ewit = witness_order[i];
-    const unsigned uwit = elit2ulit (ewit);
-    if (ws_index[uwit] == 0) // stale entry
-      continue;
-    vector<int>& wstack = witness_stacks[uwit];
-    size_t idx = ws_index[uwit];
-    // get literals of the clause
-    assert (idx > 0);
-    while (wstack[--idx] != 0) {
-      int elit = wstack[idx];
-      clause.push_back (elit);
-    } 
-    witness.push_back (ewit); // and the witness (single witness assumption)
-    assert (idx >= 4);
-    // now idx should be the index of the '0' before the two id fields
-    // so  wstack[idx - 1] is idl
-    // and wstack[idx - 2] is idu
-    // and wstack[idx - 3] is stamp
-    const int64_t id = ((int64_t) wstack[idx - 2] << 32) + 
-                       static_cast<int64_t> (wstack[idx - 1]);
-    assert (id);
-    ws_index[uwit] = idx - 4; // leave the index directly before the next clause
-    reverse (clause.begin (), clause.end ());
-    //reverse (witness.begin (), witness.end ()); // Need later on for witness cubes
-    LOG (clause, "traversing clause");
-    if (!it.witness (clause, witness, id))
-      return false;
+  vector<int> clause;
+  auto p = ss->clause_data.end ();
+  auto begin = ss->clause_data.begin ();
+  while (p != begin) {
     clause.clear ();
-    witness.clear ();
+    while (*--p)
+      clause.push_back (*p);
+    // p points to the 0 before the literals
+    const int64_t id = ((int64_t) *(p - 2) << 32) +
+                      static_cast<int64_t> (*(p - 1));
+    assert (id);
+    reverse (clause.begin (), clause.end ());
+    if (!it.witness (clause, ss->witness_cube, id))
+      return false;
+    p -= 4;
   }
   return true;
 }
-/*
-  bool External::traverse_witnesses_backward (WitnessIterator &it) {
-    if (internal->unsat)
-      return true;
-    vector<int> clause, witness;
-    const auto begin = extension.begin ();
-    auto i = extension.end ();
-    while (i != begin) {
-      int lit;
-      while ((lit = *--i))
-        clause.push_back (lit);
-      assert (!lit);
-      --i;
-      const int64_t id =
-          ((int64_t) * (i - 1) << 32) + static_cast<int64_t> (*i);
-      assert (id);
-      i -= 2;
-      assert (!*i);
-      assert (i != begin);
-      while ((lit = *--i))
-        witness.push_back (lit);
-      reverse (clause.begin (), clause.end ());
-      reverse (witness.begin (), witness.end ());
-      LOG (clause, "traversing clause");
-      if (!it.witness (clause, witness, id))
-        return false;
-      clause.clear ();
-      witness.clear ();
-    }
-    return true;
-  }
-*/
 
-// TODO: Update to work with new data structure
-// Here we have a bigger problem currently: We always have a suffix of 
-// witness order that is not stale but we only know when an entry is stale 
-// while traversing backwards. So this is for now not supported at all.
-// We would need to rewrite the witness order stack after every restoration.
-bool External::traverse_witnesses_forward (WitnessIterator &it) {
+bool External::traverse_shared_stack_forward (WitnessIterator &it, SharedStack *ss, unsigned uwit) {
+  vector<int> &witness_cube = ss->witness_cube;
+  if (witness_cube.empty ()) // stale shared stack. Skip it.
+    return true;
+  for (const auto &ewit : witness_cube) {
+    const unsigned other_uwit = elit2ulit (ewit);
+    if (other_uwit != uwit && priority[other_uwit] >= ss->stamp)
+      return true;
+  }
+  vector<int> clause;
+  auto p = ss->clause_data.begin ();
+  auto end = ss->clause_data.end ();
+  while (p != end) {
+    clause.clear ();
+    // p points to the first 0: 0 ts idu idl 0 
+    const int64_t id = ((int64_t) *(p + 2) << 32) +
+                      static_cast<int64_t> (*(p + 3));
+    assert (id);
+    p += 4; // now is on the 0 before the literals 
+    while (*++p)
+      clause.push_back (*p);
+    // p points to the leading zero of the next clause
+    if (!it.witness (clause, ss->witness_cube, id))
+      return false;
+  }
+  return true;
+}
+
+bool External::traverse_witnesses_backward (WitnessIterator &it) {
+  assert (ws_index.empty ());
+  assert (priority.empty ());
+
   if (internal->unsat)
     return true;
   vector<int> clause, witness;
-  const auto end = extension.end ();
-  auto i = extension.begin ();
-  if (i != end) {
-    int lit = *i++;
-    do {
-      assert (!lit), (void) lit;
-      while ((lit = *i++))
-        witness.push_back (lit);
-      assert (!lit);
-      assert (i != end);
-      assert (!*i);
-      const int64_t id =
-          ((int64_t) *i << 32) + static_cast<int64_t> (*(i + 1));
-      assert (id > 0);
-      i += 3;
-      assert (*i);
-      assert (i != end);
-      while (i != end && (lit = *i++))
-        clause.push_back (lit);
-      if (!it.witness (clause, witness, id))
-        return false;
-      clause.clear ();
-      witness.clear ();
-    } while (i != end);
+
+  ExtendHeap traverse_heap {
+    PriorityGreater (priority)
+  };
+
+  ws_index.resize (witness_stacks.size ());
+  priority.resize (witness_stacks.size ());
+
+  for (unsigned uwit = 0; uwit < witness_stacks.size (); uwit++) {
+    vector<int> &stack = witness_stacks[uwit];
+    if (stack.empty ())
+      continue;
+    uint32_t idx = stack.size ();
+    ws_index[uwit] = idx;
+    const uint32_t ts = r_timestamp (stack, idx);
+    assert (ts);
+
+    priority[uwit] = ts;
+    traverse_heap.push (uwit);
   }
+
+  while (!traverse_heap.empty ()) {
+    const unsigned uwit = traverse_heap.top ();
+    traverse_heap.pop ();
+    vector<int> &stack = witness_stacks[uwit];
+    uint32_t idx = ws_index[uwit];
+    uint32_t ts = 0;
+    while (idx) {
+      assert (idx >= 5);
+      const bool shared_ref = !stack[idx - 3] && 
+                            !stack[idx - 4] && 
+                            !stack[idx - 5]; 
+      if (shared_ref) {
+        const uintptr_t ptr =  (static_cast<uintptr_t> (
+                              static_cast<uint32_t> (stack[idx - 2])) << 32) |
+                              static_cast<uint32_t> (stack[idx - 1]);
+        SharedStack *ss = reinterpret_cast<SharedStack *> (ptr);
+
+        ts = ss->stamp;
+
+        if (!traverse_heap.empty () &&
+            ts < priority[traverse_heap.top ()])
+          break;
+
+        if (!traverse_shared_stack_backward (it, ss, uwit))
+          return false;
+
+        idx -= 5;
+      } else {
+        uint32_t p = idx - 1; // p points to the last literal
+        assert (stack[p]);
+
+        clause.clear ();
+
+        while (stack[p]) {
+          clause.push_back (stack[p--]);
+        }
+
+        ts = static_cast<uint32_t> (stack[p - 3]);
+
+        if (!traverse_heap.empty () &&
+            ts < priority[traverse_heap.top ()])
+          break;
+      
+        witness.clear ();
+        const int sign = (int) (uwit & 1);
+        const int ewit = ((int) (uwit >> 1) + 1 ^ -sign) + sign;
+        witness.push_back (ewit);
+
+        // p points to the '0' before the literals
+        const int64_t id = ((int64_t) stack[p - 2] << 32) +
+                          static_cast<int64_t> (stack[p - 1]);
+        
+        assert (id);
+
+        idx = p - 4;
+
+        reverse (clause.begin (), clause.end ());
+
+        if (!it.witness (clause, witness, id))
+          return false;
+      }                          
+    }
+    ws_index[uwit] = idx;
+
+    if (idx) {
+      set_priority (uwit, ts);
+      traverse_heap.push (uwit);
+    }
+  }
+  ws_index.clear ();
+  priority.clear ();
+
+  return true;
+}
+
+bool External::traverse_witnesses_forward (WitnessIterator &it) {
+  assert (ws_index.empty ());
+  assert (priority.empty ());
+
+  if (internal->unsat)
+    return true;
+  vector<int> clause, witness;
+
+  RestoreHeap traverse_heap {
+    PriorityLess (priority)
+  };
+
+  ws_index.resize (witness_stacks.size ());
+  priority.resize (witness_stacks.size ());
+
+  for (unsigned uwit = 0; uwit < witness_stacks.size (); uwit++) {
+    vector<int> &stack = witness_stacks[uwit];
+    if (stack.empty ())
+      continue;
+    // get the time stamp of the first clause
+    const uint32_t ts = timestamp (stack, 0);
+    assert (ts);
+
+    priority[uwit] = ts;
+    traverse_heap.push (uwit);
+  }
+
+  while (!traverse_heap.empty ()) {
+    const unsigned uwit = traverse_heap.top ();
+    traverse_heap.pop ();
+    vector<int> &stack = witness_stacks[uwit];
+    uint32_t idx = ws_index[uwit];
+    uint32_t ts = 0;
+    while (idx != stack.size ()) {
+      // idx is on the start of the next clause
+      // shared ref = 0 0 0 ptr_u ptr_l
+      const bool shared_ref = !stack[idx] &&
+                              !stack[idx + 1] &&
+                              !stack[idx + 2];
+      if (shared_ref) {
+        const uintptr_t ptr = (static_cast<uintptr_t> (
+                               static_cast<uint32_t> (stack[idx + 3])) << 32) |
+                               static_cast<uint32_t> (stack[idx + 4]);
+        SharedStack *ss = reinterpret_cast<SharedStack *> (ptr);
+
+        ts = ss->stamp;
+
+        if (!traverse_heap.empty () &&
+            ts > priority[traverse_heap.top ()])
+          break;
+
+        if (!traverse_shared_stack_forward (it, ss, uwit))
+          return false;
+
+        idx += 5;
+      } else { // 0 ts idu idl 0 l1 ... lk
+        ts = static_cast<uint32_t> (stack[idx + 1]);
+        if (!traverse_heap.empty () &&
+            ts > priority[traverse_heap.top ()])
+          break;
+
+        const int64_t id = ((int64_t) stack[idx + 2] << 32) +
+                            static_cast<int64_t> (stack[idx + 3]);
+        assert (id);
+
+        idx += 5; // idx now on first literal
+
+        clause.clear ();
+        while (idx != stack.size () && stack[idx])
+          clause.push_back (stack[idx++]);
+        // idx now on leading 0 of next clause or on end of stack
+        witness.clear ();
+        const int sign = (int) (uwit & 1);
+        const int ewit = ((int) (uwit >> 1) + 1 ^ -sign) + sign;
+        witness.push_back (ewit);
+
+        if (!it.witness (clause, witness, id))
+          return false;
+      }
+    }
+    ws_index[uwit] = idx;
+
+    if (idx != stack.size ()) {
+      set_priority (uwit, ts);
+      traverse_heap.push (uwit);
+    }
+  }
+  ws_index.clear ();
+  priority.clear ();
+
   return true;
 }
 

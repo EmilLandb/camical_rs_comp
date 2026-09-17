@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <unordered_map>
 #include <vector>
+#include <queue>
 
 /*------------------------------------------------------------------------*/
 
@@ -58,6 +59,31 @@ class Terminator;
 class WitnessIterator;
 
 /*------------------------------------------------------------------------*/
+struct PriorityLess {
+  vector<uint32_t> &priority;
+
+  PriorityLess (vector<uint32_t> &p) : priority (p) {}
+
+  bool operator () (unsigned a, unsigned b) const {
+    return priority[a] > priority[b];
+  }
+};
+
+struct PriorityGreater {
+  vector<uint32_t> &priority;
+
+  PriorityGreater (vector<uint32_t> &p) : priority (p) {}
+
+  bool operator () (unsigned a, unsigned b) const {
+    return priority[a] < priority[b];
+  }
+};
+
+using ExtendHeap =
+  priority_queue<unsigned, vector<unsigned>, PriorityGreater>;
+using RestoreHeap =
+  priority_queue<unsigned, vector<unsigned>, PriorityLess>;
+
 struct TaintedLess {
   vector<uint32_t> &restore_start;
 
@@ -70,6 +96,19 @@ struct TaintedLess {
            restore_start[b];
   }
 };
+
+struct ExtendNewer {
+  vector<uint32_t> newest_stamp;
+
+  ExtendNewer (vector<uint32_t> &ns)
+    : newest_stamp (ns) {}
+
+  // max-heap
+  bool operator () (unsigned a, unsigned b) const {
+    return newest_stamp[a] < newest_stamp[b];
+  }
+};
+
 /*------------------------------------------------------------------------*/
 
 struct External {
@@ -105,11 +144,16 @@ struct External {
 
   uint32_t stamp = 0; // Time stamping clauses on the witness stacks.
   vector<vector<int>> witness_stacks; // Reconstruction stacks for each witness.
-  vector<int> witness_order; // For restoring the order of clauses in extend.
   vector<int> tainted_lits; // For initializing the heap
-  vector<uint32_t> restore_start; // Priority for restoration
-  heap<TaintedLess> tainted_heap;
-  vector<bool> processed;
+  vector<uint32_t> priority; // Priority for restoration
+  vector<uint32_t> ws_index; // Indices into the witness stacks
+
+  RestoreHeap tainted_heap;
+  struct RestoreCutoff {
+    unsigned uwit;
+    uint32_t idx;
+  };
+  vector<RestoreCutoff> restore_cutoffs;
 
   vector<bool> witness; // Literal witness on extension stack.
   vector<bool> tainted; // Literal tainted in adding literals.
@@ -229,13 +273,34 @@ struct External {
   void push_binary_clause_on_extension_stack (int64_t id, int wit,
                                               int other);
 
-  // Clauses that have multiple witnesses (witness cubes) need to be referenced
-  // on all relevant witness stacks. 
-  void push_shared_clause_on_extension_stack (vector<int> wits, Clause *c);
+  
+  // This is a generalization of a shared clause: 
+  // A witness cube is shared among many clauses (e.g. as for an autarky)
+  // All clauses share one time stamp (they are not ordered)
+  struct SharedStack {
+    uint32_t backlinks;
+    uint32_t stamp;
+    vector<int> witness_cube; 
+    vector<int> clause_data; // contains ids and literals of all clauses 
+  };
+
+  struct ExtendStats {
+    int64_t extension_size, events, pushed, updated, flipped;
+  };
+
+  SharedStack* create_shared_stack (const vector<int> &iwit_cube);
+
+  void push_shared_clause (SharedStack *ss, Clause *c);
+
+  void create_shared_stack_and_push_clause (const vector<int> &iwit_cube, 
+    Clause *c);
+
+  void extend_shared_stack (SharedStack *ss, unsigned uwit, ExtendStats &stats);
 
   // The main 'extend' function which extends an internal assignment to an
   // external assignment using the extension stack (and sets 'extended').
   //
+  void extend_next (unsigned uwit, ExtendHeap &extend_heap, ExtendStats &stats);
   void extend ();
   void conclude_sat ();
 
@@ -281,38 +346,34 @@ struct External {
             seenbytes, totalbytes, compacted;
   };
 
-  // TODO: this only works with flexible array members yet.
-  struct SharedClause {
-    int64_t id;
-    int backlinks; // number of dummy clauses that are still connected
-    bool force_witness = false; // assign witness unconditionally
-    bool stale = false; // ignore (and freed in restore if at some point links are 0)
-    int elits[]; // zero terminated // TODO: maybe just add a size field instead?
-  };
+  void set_priority (unsigned ulit, uint32_t timestamp);
 
-  void set_restore_start (unsigned ulit, uint32_t timestamp);
-
-  uint32_t get_restore_start (unsigned ulit) const;
-
-  // Add a new entry for ulit with priority timestamp or update an existing one.
-  void schedule (unsigned ulit, uint32_t timestamp);
+  uint32_t get_priority (unsigned ulit) const;
 
   // Decide whether a witness needs to be scheduled for restoration triggered
   // by restoring a clause that contains elit and has time stamp ts.
-  void decide_scheduling (int elit, uint32_t timestamp);
+  void decide_scheduling (int elit, uint32_t clause_ts);
 
   // Restore a clause, which was pushed on the extension stack.
   void restore_clause (const vector<int>::const_iterator &begin,
                        const vector<int>::const_iterator &end,
                        const int64_t id, const uint32_t timestamp);
 
-  // Restore a shared clause, which has references on the witness stacks
-  void restore_shared_clause (SharedClause *sc);
+  // Restore all clauses on a shared stack
+  void restore_shared_stack (SharedStack *ss, RestoreStats &clauses);
 
-  // Restore clauses on witness_stack[uwit]
+  // Restore clauses on witness_stack[uwit] and on referenced shared stacks
   void restore_clauses (unsigned uwit, uint32_t ts, RestoreStats &clauses);
 
-  void compact_witness_order ();
+  uint32_t timestamp (const vector<int> &stack, uint32_t idx);
+
+  uint32_t r_timestamp (const vector<int> &stack, uint32_t idx);
+
+  uint32_t next_event (const vector<int> &stack, uint32_t idx);
+
+  uint32_t restore_event (vector<int> &stack, uint32_t idx, RestoreStats &clauses);
+
+  void restore_next (RestoreStats &clauses);
 
   // Propagate tainting end restore tainted clauses
   void propagate_tainting (RestoreStats &clauses);
@@ -491,6 +552,8 @@ struct External {
 
   bool traverse_all_frozen_units_as_clauses (ClauseIterator &);
   bool traverse_all_non_frozen_units_as_witnesses (WitnessIterator &);
+  bool traverse_shared_stack_backward (WitnessIterator &, SharedStack *ss, unsigned uwit);
+  bool traverse_shared_stack_forward (WitnessIterator &, SharedStack *ss, unsigned uwit);
   bool traverse_witnesses_backward (WitnessIterator &);
   bool traverse_witnesses_forward (WitnessIterator &);
 

@@ -714,7 +714,7 @@ struct Internal {
   // Managing clauses in 'clause.cpp'.  Without explicit 'Clause' argument
   // these functions work on the global temporary 'clause'.
   //
-  Clause *new_clause (bool red, int glue = 0);
+  Clause *new_clause (bool red, int glue = 0, int64_t new_id = 0);
   void promote_clause (Clause *, int new_glue);
   void promote_clause_glue_only (Clause *, int new_glue);
   void make_irredundant (Clause *);
@@ -937,10 +937,7 @@ struct Internal {
 
   bool search_limits_hit ();
 
-  void terminate () {
-    LOG ("forcing asynchronous termination");
-    termination_forced = true;
-  }
+  void terminate () { termination_forced = true; }
 
   // Reducing means determining useless clauses with 'reduce' in
   // 'reduce.cpp' as well as root level satisfied clause and then removing
@@ -1276,7 +1273,7 @@ struct Internal {
   void
   mark_redundant_clauses_with_eliminated_variables_as_garbage (int64_t &);
   void unmark_binary_literals (Eliminator &);
-  bool resolve_clauses (Eliminator &, Clause *, int pivot, Clause *, bool);
+  bool resolve_clauses (Eliminator &, Clause *, int pivot, Clause *, bool propagate, bool keep_chain);
   void mark_eliminated_clauses_as_garbage (Eliminator &, int pivot, bool &);
   bool elim_resolvents_are_bounded (Eliminator &, int pivot);
   void elim_update_removed_lit (Eliminator &, int lit);

@@ -273,7 +273,7 @@ void Internal::elim_on_the_fly_self_subsumption (Eliminator &eliminator,
 
 bool Internal::resolve_clauses (Eliminator &eliminator, Clause *c,
                                 int pivot, Clause *d,
-                                const bool propagate_eagerly) {
+                                const bool propagate_eagerly, const bool keep_chain) {
 
   assert (!c->redundant);
   assert (!d->redundant);
@@ -456,7 +456,7 @@ bool Internal::resolve_clauses (Eliminator &eliminator, Clause *c,
     elim_on_the_fly_self_subsumption (eliminator, d, -pivot);
     return false;
   }
-  if (propagate_eagerly)
+  if (!keep_chain)
     lrat_chain.clear ();
   return true;
 }
@@ -518,7 +518,7 @@ bool Internal::elim_resolvents_are_bounded (Eliminator &eliminator,
       if (!resolve_gates && substitute && c->gate == d->gate)
         continue;
       stats.eliminate_tried_res++;
-      if (resolve_clauses (eliminator, c, pivot, d, true)) {
+      if (resolve_clauses (eliminator, c, pivot, d, true, false)) {
         resolvents++;
         int size = clause.size ();
         clause.clear ();
@@ -607,7 +607,7 @@ inline void Internal::elim_add_resolvents (Eliminator &eliminator,
         continue;
       if (!resolve_gates && substitute && c->gate == d->gate)
         continue;
-      if (!resolve_clauses (eliminator, c, pivot, d, false))
+      if (!resolve_clauses (eliminator, c, pivot, d, false, true))
         continue;
       assert (!lrat || !lrat_chain.empty ());
       Clause *r = new_resolved_irredundant_clause ();
@@ -799,7 +799,8 @@ int Internal::elim_round (bool &completed, bool &deleted_binary_clause) {
   assert (opts.elim);
   assert (!unsat);
 
-  START_SIMPLIFIER (elim, ELIM);
+  MODE_SCOPE_SIMPLIFY (ELIM);
+  PROFILE_SCOPE_SIMPLIFY (elim);
   stats.eliminations++;
 
   int64_t marked_before = last.elim.marked;
@@ -981,7 +982,8 @@ int Internal::elim_round (bool &completed, bool &deleted_binary_clause) {
   last.elim.subsumephases = stats.subsume_phases;
   const int units = stats.vars_all_fixed - old_fixed;
   report ('e', !opts.reportall && !(eliminated + units));
-  STOP_SIMPLIFIER (elim, ELIM);
+  MODE_SCOPE_EARLY_EXIT (ELIM);
+  PROFILE_SCOPE_EARLY_EXIT (elim);
 
   if (!unsat && !terminated_asynchronously () &&
       instantiator) // Do we have candidate pairs?

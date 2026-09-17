@@ -800,7 +800,7 @@ long Internal::condition_round (long delta) {
             wits.push_back (lit);
       if (proof)
         proof->weaken_minus (c);
-      external->push_shared_clause_on_extension_stack (wits, c);
+      external->create_shared_stack_and_push_clause (wits, c);
       wits.clear ();
       mark_garbage (c);
 
@@ -911,7 +911,8 @@ void Internal::condition (bool update_limits) {
   if (!stats.clauses_now_irr)
     return;
 
-  START_SIMPLIFIER (condition, CONDITION);
+  MODE_SCOPE_SIMPLIFY (CONDITION);
+  PROFILE_SCOPE_SIMPLIFY (condition);
   stats.conditionings++;
 
   // Propagation limit to avoid too much work in 'condition'.  We mark
@@ -934,8 +935,6 @@ void Internal::condition (bool update_limits) {
          stats.conflicts, limit);
 
   long blocked = condition_round (limit);
-
-  STOP_SIMPLIFIER (condition, CONDITION);
   report ('g', !blocked);
 
   if (!update_limits)
