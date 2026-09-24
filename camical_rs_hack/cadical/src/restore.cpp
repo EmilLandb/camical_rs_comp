@@ -477,6 +477,15 @@ void External::restore () {
            "starting with %u tainted literals %.0f%%", numtainted,
            percent (numtainted, 2u * max_var));
   }
+  { // TODO: remove this again after evaluation
+    internal->stats.restore_ws_size += witness_stacks.size ();
+    for (const auto &stack : witness_stacks)
+      if (stack.size ()) {
+        internal->stats.restore_nstacks++;
+        internal->stats.restore_nints += stack.size ();
+        internal->stats.restore_caps += stack.capacity ();
+      }
+  }
 #endif
 
   if (internal->opts.restoreall == 2) {
@@ -543,6 +552,10 @@ void External::restore () {
     // "resize" witness vector  
     while (!witness.empty () && !witness.back ())
       witness.pop_back ();
+    
+    // 'resize' witness stacks
+    while (!witness_stacks.empty () && witness_stacks.back ().empty ())
+      witness_stacks.pop_back ();
 
     priority.clear ();
     ws_index.clear ();
