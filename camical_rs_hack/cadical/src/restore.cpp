@@ -440,8 +440,13 @@ void External::propagate_tainting (RestoreStats &clauses) {
     restore_next (clauses);
   }
 
-  for (const auto &cutoff : restore_cutoffs)
-    witness_stacks[cutoff.uwit].resize (cutoff.idx);
+  for (const auto &cutoff : restore_cutoffs) {
+    auto &stack = witness_stacks[cutoff.uwit];
+    stack.resize (cutoff.idx);
+    
+    if (stack.empty ())
+      u_unmark (witness, cutoff.uwit);
+  }
 }
 
 void External::restore_all (RestoreStats &clauses) {
@@ -494,10 +499,13 @@ void External::restore () {
   else if (!tainted_lits.empty ()) {
     assert (ws_index.empty ());
     assert (restore_cutoffs.empty ());
+    assert (priority.empty ());
     ws_index.resize (witness_stacks.size ());
     for (auto elit : tainted_lits) {
       const unsigned uwit = elit2ulit (-elit);
       LOG ("tainted literal %d (external) (%u unsigned)", elit, uwit);
+      //if (uwit >= witness_stacks.size ())
+      //  continue;
       vector<int> &stack = witness_stacks[uwit];
       LOG (stack, "witness_stack[%u]: ", uwit);
       if (stack.empty ()) // TODO: That should not be possible
@@ -558,21 +566,22 @@ void External::restore () {
     while (!witness_stacks.empty () && witness_stacks.back ().empty ())
       witness_stacks.pop_back ();
     witness_stacks.shrink_to_fit ();
-
-    priority.clear ();
-    priority.shrink_to_fit ();
+    
     ws_index.clear ();
     ws_index.shrink_to_fit ();
     restore_cutoffs.clear ();
     restore_cutoffs.shrink_to_fit ();
 
     assert (tainted_heap.empty ());    
-    tainted_heap = RestoreHeap(PriorityLess(priority));
+    //tainted_heap = RestoreHeap(PriorityLess(priority));
 
     internal->stats.restore_total_bytes += clauses.totalbytes;
     internal->stats.restore_seen_bytes += clauses.seenbytes;
     restoring = false;
   }
+
+  priority.clear();
+  priority.shrink_to_fit ();
 
 #ifndef QUIET
   if (clauses.satisfied)

@@ -256,7 +256,9 @@ void External::extend_shared_stack (SharedStack *ss, unsigned uwit, ExtendStats 
   for (const auto &ewit : witness_cube) {
     // check if the shared stack was already extended
     const unsigned other_uwit = elit2ulit (ewit);
-    if (other_uwit != uwit && priority[other_uwit] <= ss->stamp) { 
+    if (other_uwit != uwit && 
+        priority[other_uwit] &&
+        priority[other_uwit] <= ss->stamp) { 
       satisfied = true;
       break;
     }
@@ -568,8 +570,11 @@ bool External::traverse_witnesses_backward (WitnessIterator &it) {
             ts < priority[traverse_heap.top ()])
           break;
 
-        if (!traverse_shared_stack_backward (it, ss, uwit))
+        if (!traverse_shared_stack_backward (it, ss, uwit)) {
+          priority.clear ();
+          ws_index.clear ();
           return false;
+        }
 
         idx -= 5;
       } else {
@@ -603,8 +608,11 @@ bool External::traverse_witnesses_backward (WitnessIterator &it) {
 
         reverse (clause.begin (), clause.end ());
 
-        if (!it.witness (clause, witness, id))
+        if (!it.witness (clause, witness, id)) {
+          ws_index.clear ();
+          priority.clear ();
           return false;
+        }
       }                          
     }
     ws_index[uwit] = idx;
@@ -626,6 +634,7 @@ bool External::traverse_witnesses_forward (WitnessIterator &it) {
 
   if (internal->unsat)
     return true;
+  
   vector<int> clause, witness;
 
   RestoreHeap traverse_heap {
@@ -671,8 +680,11 @@ bool External::traverse_witnesses_forward (WitnessIterator &it) {
             ts > priority[traverse_heap.top ()])
           break;
 
-        if (!traverse_shared_stack_forward (it, ss, uwit))
+        if (!traverse_shared_stack_forward (it, ss, uwit)) {
+          ws_index.clear ();
+          priority.clear ();
           return false;
+        }
 
         idx += 5;
       } else { // 0 ts idu idl 0 l1 ... lk
@@ -696,8 +708,11 @@ bool External::traverse_witnesses_forward (WitnessIterator &it) {
         const int ewit = ((int) (uwit >> 1) + 1 ^ -sign) + sign;
         witness.push_back (ewit);
 
-        if (!it.witness (clause, witness, id))
+        if (!it.witness (clause, witness, id)) {
+          ws_index.clear ();
+          priority.clear ();
           return false;
+        }
       }
     }
     ws_index[uwit] = idx;
