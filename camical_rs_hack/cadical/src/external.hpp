@@ -60,12 +60,12 @@ class WitnessIterator;
 
 /*------------------------------------------------------------------------*/
 struct PriorityLess {
-  vector<uint32_t> &priority;
+  vector<uint32_t> *priority;
 
-  PriorityLess (vector<uint32_t> &p) : priority (p) {}
+  PriorityLess (vector<uint32_t> &p) : priority (&p) {}
 
   bool operator () (unsigned a, unsigned b) const {
-    return priority[a] > priority[b];
+    return (*priority)[a] > (*priority)[b];
   }
 };
 

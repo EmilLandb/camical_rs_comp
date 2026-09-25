@@ -542,6 +542,7 @@ void External::restore () {
       }      
     }
     tainted_lits.clear ();
+    tainted_lits.shrink_to_fit ();
 
     // TODO: this does not account for shared stack sizes...
     for (const auto &s : witness_stacks)
@@ -556,11 +557,17 @@ void External::restore () {
     // 'resize' witness stacks
     while (!witness_stacks.empty () && witness_stacks.back ().empty ())
       witness_stacks.pop_back ();
+    witness_stacks.shrink_to_fit ();
 
     priority.clear ();
+    priority.shrink_to_fit ();
     ws_index.clear ();
+    ws_index.shrink_to_fit ();
     restore_cutoffs.clear ();
-    assert (tainted_heap.empty ());
+    restore_cutoffs.shrink_to_fit ();
+
+    assert (tainted_heap.empty ());    
+    tainted_heap = RestoreHeap(PriorityLess(priority));
 
     internal->stats.restore_total_bytes += clauses.totalbytes;
     internal->stats.restore_seen_bytes += clauses.seenbytes;
@@ -602,6 +609,7 @@ void External::restore () {
   }
 #endif
   tainted.clear ();
-}
+  tainted.shrink_to_fit ();
+} 
 
 } // namespace CaDiCaL
