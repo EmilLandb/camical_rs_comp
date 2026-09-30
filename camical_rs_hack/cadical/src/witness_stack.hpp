@@ -23,7 +23,7 @@ struct WitnessStack {
 
 	void push_back (int val) {
 		if (!stack) { // empty stack <-> nullptr
-			allocate (16); // common case
+			allocate (12); // common case
 		} else if (stack[0] == stack[1]) { // stack is full. Grow...
 			grow ();
 		}

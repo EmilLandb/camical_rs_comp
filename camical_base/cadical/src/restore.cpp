@@ -110,6 +110,12 @@ void External::restore_clauses () {
   }
 #endif
 
+  // TODO: Remove.
+  const size_t ext_cap = extension.capacity ();
+  const size_t ext_size = extension.size ();
+  printf ("extension capacity: %zu (bytes)\n", ext_cap * sizeof (int));
+  printf ("extension size: %zu (bytes)\n", ext_size * sizeof (int));
+
   auto end_of_extension = extension.end ();
   auto p = extension.begin (), q = p;
 
@@ -198,6 +204,7 @@ void External::restore_clauses () {
 
   extension.resize (q - extension.begin ());
   shrink_vector (extension);
+
 
 #ifndef QUIET
   if (clauses.satisfied)

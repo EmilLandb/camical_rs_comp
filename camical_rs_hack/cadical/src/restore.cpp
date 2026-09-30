@@ -82,6 +82,7 @@ uint32_t External::get_priority (unsigned ulit) const {
   return priority[ulit];
 }
 
+// NEW VERSION
 void External::decide_scheduling_c (int elit, uint32_t clause_ts) {
   const unsigned uwit = elit2ulit (-elit); // wit. that could need restoration
   LOG ("deciding scheduling for %d (unsigned %u) with time stamp %u", elit, uwit, clause_ts);
@@ -649,21 +650,33 @@ void External::restore_next (RestoreStats &clauses) {
 
 // NEW VERSION
 void External::propagate_tainting_c (RestoreStats &clauses) {
+  size_t tainted_heap_max_size = tainted_heap.size ();
+
   while (!tainted_heap.empty ()) {
+    if (tainted_heap.size () > tainted_heap_max_size) // TODO: remove stat
+      tainted_heap_max_size = tainted_heap.size ();
     restore_next_c (clauses);
   }
 
+  printf ("tainted_heap_max_size: %zu (bytes)\n", tainted_heap_max_size * sizeof (int));
+  printf ("restore_cutoffs size: %zu (bytes)\n", restore_cutoffs.size () * sizeof (RestoreCutoff));
+  size_t emptied_stacks = 0;
   for (const auto &cutoff : restore_cutoffs) {
     auto &stack = witness_stacks2[cutoff.uwit];
     stack.truncate (cutoff.idx + 2); // add two for the size and capacity fields
-    if (stack.empty ())
+    stack.shrink_to_fit ();
+    if (stack.empty ()) {
+      emptied_stacks++; // TODO: remove
       u_unmark (witness, cutoff.uwit);
+    }
   }
+  printf ("emptied stacks: %zu\n", emptied_stacks);
 }
 
 void External::propagate_tainting (RestoreStats &clauses) {
-
+  
   while (!tainted_heap.empty ()) {
+    
     const unsigned uwit = tainted_heap.top ();
     const uint32_t ts = get_priority (uwit);
     assert (ts);
@@ -671,7 +684,6 @@ void External::propagate_tainting (RestoreStats &clauses) {
     //restore_clauses (uwit, ts, clauses);
     restore_next (clauses);
   }
-
   for (const auto &cutoff : restore_cutoffs) {
     auto &stack = witness_stacks[cutoff.uwit];
     stack.resize (cutoff.idx);
@@ -716,13 +728,21 @@ void External::restore () {
            percent (numtainted, 2u * max_var));
   }
   { // TODO: remove this again after evaluation
-    internal->stats.restore_ws_size += witness_stacks.size ();
-    for (const auto &stack : witness_stacks)
-      if (stack.size ()) {
-        internal->stats.restore_nstacks++;
-        internal->stats.restore_nints += stack.size ();
-        internal->stats.restore_caps += stack.capacity ();
-      }
+    internal->stats.restore_ws_size += witness_stacks2.size ();
+    size_t nstacks = 0;
+    size_t nints = 0;
+    size_t caps = 0;
+    for (const auto &stack : witness_stacks2) {
+        nstacks += !stack.empty ();
+        nints += stack.size ();
+        caps += stack.capacity ();
+    }
+    internal->stats.restore_nstacks += nstacks;
+    internal->stats.restore_nints += nints;
+    internal->stats.restore_caps += caps;
+    printf ("witness stacks nonempty: %zu\n", nstacks);
+    printf ("witness stacks sizes (bytes): %zu\n", nints * sizeof (int));
+    printf ("witness stacks caps (bytes): %zu\n", caps * sizeof (int));
   }
 #endif
 
@@ -734,6 +754,11 @@ void External::restore () {
     assert (restore_cutoffs.empty ());
     assert (priority.empty ());
     ws_index.resize (witness_stacks2.size ());
+    printf ("ws_index cap: %zu (bytes)\n", ws_index.capacity () * sizeof (int32_t));
+    printf ("priority cap: %zu (bytes)\n", priority.capacity () * sizeof (int32_t));
+    printf ("witness_stacks2 cap: %zu (bytes)\n", witness_stacks2.capacity () * sizeof (WitnessStack));
+    printf ("witness cap: %zu (bytes)\n", witness.capacity () * sizeof (bool));
+    printf ("tainted cap: %zu (bytes)\n", tainted.capacity () * sizeof (bool));
     for (auto elit : tainted_lits) {
       const unsigned uwit = elit2ulit (-elit);
       LOG ("tainted literal %d (external) (%u unsigned)", elit, uwit);
@@ -785,7 +810,7 @@ void External::restore () {
     tainted_lits.shrink_to_fit ();
 
     // TODO: this does not account for shared stack sizes...
-    for (const auto &s : witness_stacks)
+    for (const auto &s : witness_stacks2)
       clauses.totalbytes += s.size () * sizeof (int);
 
     propagate_tainting_c (clauses);
@@ -813,7 +838,7 @@ void External::restore () {
   }
 
   priority.clear();
-  priority.shrink_to_fit ();
+  //priority.shrink_to_fit (); // TODO: comment back in if this really does something
 
 #ifndef QUIET
   if (clauses.satisfied)
