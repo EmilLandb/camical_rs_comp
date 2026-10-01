@@ -663,8 +663,8 @@ void External::propagate_tainting_c (RestoreStats &clauses) {
   size_t emptied_stacks = 0;
   for (const auto &cutoff : restore_cutoffs) {
     auto &stack = witness_stacks2[cutoff.uwit];
-    stack.truncate (cutoff.idx + 2); // add two for the size and capacity fields
-    stack.shrink_to_fit ();
+    stack.truncate (cutoff.idx + 2, witness_pool); // add two for the size and capacity fields
+    stack.shrink_to_fit (witness_pool);
     if (stack.empty ()) {
       emptied_stacks++; // TODO: remove
       u_unmark (witness, cutoff.uwit);
@@ -732,17 +732,31 @@ void External::restore () {
     size_t nstacks = 0;
     size_t nints = 0;
     size_t caps = 0;
+    std::vector<uint64_t> witness_stack_sizes;
+
     for (const auto &stack : witness_stacks2) {
         nstacks += !stack.empty ();
         nints += stack.size ();
         caps += stack.capacity ();
+        if (!stack.empty ()) {
+          const unsigned size = stack.size ();
+          if (witness_stack_sizes.size () <= size)
+            witness_stack_sizes.resize (size + 1, 0);
+          ++witness_stack_sizes[size];
+        }      
     }
+
     internal->stats.restore_nstacks += nstacks;
     internal->stats.restore_nints += nints;
     internal->stats.restore_caps += caps;
     printf ("witness stacks nonempty: %zu\n", nstacks);
     printf ("witness stacks sizes (bytes): %zu\n", nints * sizeof (int));
     printf ("witness stacks caps (bytes): %zu\n", caps * sizeof (int));
+    for (unsigned size = 0; size < witness_stack_sizes.size(); ++size)
+      if (witness_stack_sizes[size])
+        printf("witness stack size %u: %llu\n", size,
+                 static_cast<unsigned long long>(
+                     witness_stack_sizes[size]));
   }
 #endif
 

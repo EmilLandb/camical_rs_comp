@@ -1,5 +1,7 @@
 #ifndef _witness_stack_hpp_INCLUDED
 #define _witness_stack_hpp_INCLUDED
+#include <memory_resource>
+#include <cstring>
 namespace CaDiCaL {
 
 // Dynamic array for weakened clauses with a given witness. 
@@ -21,66 +23,94 @@ struct WitnessStack {
 		return size () == 0;
 	}
 
-	void push_back (int val) {
-		if (!stack) { // empty stack <-> nullptr
-			allocate (12); // common case
-		} else if (stack[0] == stack[1]) { // stack is full. Grow...
-			grow ();
-		}
-		const unsigned size = stack[0]; // old size (also idx to end)
-		stack[size] = val; // store value at end of stack
-		stack[0] = size + 1; // increment size
+	void allocate (unsigned cap, std::pmr::memory_resource &resource) {
+		assert (!stack);
+		assert (cap >= 2);
+
+		stack = static_cast<int *> (resource.allocate (cap * sizeof (int), alignof (int)));
+
+		stack[0] = 2;
+		stack[1] = cap;
 	}
 
-	void grow () {
-		const unsigned new_cap = 2 * stack[1];
-		int *new_stack = new int[new_cap];
+	void push_back (int val, std::pmr::memory_resource &resource) {
+		if (!stack) { // empty stack <-> nullptr
+			allocate (8, resource); // common case
+		} else if (stack[0] == stack[1]) { // stack is full. Grow...
+			grow (resource);
+		}
+		const unsigned old_size = size (); // old size (also idx to end)
+		stack[old_size] = val; // store value at end of stack
+		stack[0] = old_size + 1; // increment size
+	}
 
-		memcpy (new_stack, stack, stack[0] * sizeof (int));
+	void grow (std::pmr::memory_resource &resource) {
+		assert (stack);
+		assert (stack[0] == stack[1]);
+
+		const unsigned old_size = size ();
+		const unsigned old_cap  = capacity ();
+		unsigned new_cap;
+		switch (old_cap) {
+		case 8: new_cap = 12; break;
+		case 12: new_cap = 16; break;
+		default: new_cap = 2 * old_cap; break;
+		}
+		int *new_stack = static_cast<int *> (resource.allocate (new_cap * sizeof (int), alignof (int)));
+
+		std::memcpy (new_stack, stack, old_size * sizeof (int));
 		new_stack[1] = new_cap;
 
-		delete[] stack;
+		resource.deallocate (stack, old_cap * sizeof (int), alignof (int));
+
 		stack = new_stack;
 	}
 
-	void truncate (unsigned new_size) {
+	void truncate (unsigned new_size, std::pmr::memory_resource &resource) {
 		assert (stack);
 		assert (new_size >= 2);
-		assert (new_size <= static_cast<unsigned> (stack[0]));
+		assert (new_size <= size ());
 
 		if (new_size == 2) {
-			clear ();
+			clear (resource);
 			return;
 		}
+
 		stack[0] = new_size;
 	}
 
-	void shrink_to_fit () {
-		if (!stack || stack[0] == stack[1])
+	void shrink_to_fit (std::pmr::memory_resource &resource) {
+		if (!stack || size () == capacity ())
 			return;
 
-		const unsigned size = stack[0];
-		int *new_stack = new int[size];
+		const unsigned old_size = size ();
+		const unsigned old_cap = capacity ();
 
-		memcpy (new_stack, stack, size * sizeof (int));
+		int *new_stack = static_cast<int *> (resource.allocate (old_size * sizeof (int), alignof (int)));
 
-		new_stack[1] = size;
+		std::memcpy (new_stack, stack, old_size * sizeof (int));
 
-		delete[] stack;
+		new_stack[1] = old_size;
+
+		resource.deallocate (stack, old_cap * sizeof (int), alignof (int));
+
 		stack = new_stack;
 	}
 
-	void clear () {
-		delete[] stack;
+	void clear (std::pmr::memory_resource &resource) {
+		if (!stack)
+			return;	
+		const unsigned old_cap = capacity ();
+
+		assert (old_cap >= 2);
+    assert (stack[0] >= 2);
+    assert (static_cast<unsigned>(stack[0]) <= old_cap);
+
+		resource.deallocate (stack, old_cap * sizeof (int), alignof (int));
+
 		stack = nullptr;
 	}
-
-	void allocate (unsigned capacity) {
-		stack = new int[capacity];
-		stack[0] = 2;
-		stack[1] = capacity;
-	}
-
+	
 	int *begin () {
 	    return stack ? stack + 2 : nullptr;
 	}
