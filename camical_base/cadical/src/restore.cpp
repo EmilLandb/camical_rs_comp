@@ -49,11 +49,29 @@ namespace CaDiCaL {
 
 void External::restore_clause (const vector<int>::const_iterator &begin,
                                const vector<int>::const_iterator &end,
+                               const int ewit,
                                const int64_t id) {
   LOG (begin, end, "restoring external clause[%" PRId64 "]", id);
   assert (eclause.empty ());
   assert (id);
+  if (ewit) {
+    eclause.push_back (ewit);
+    if (internal->proof && internal->lrat) {
+      unsigned eidx = (ewit > 0) + 2u * (unsigned) abs (ewit);
+      assert ((size_t) eidx < ext_units.size ());
+      const int64_t id = ext_units[eidx];
+      bool added = ext_flags[abs (ewit)];
+      if (id && !added) {
+        ext_flags[abs (ewit)] = true;
+        internal->lrat_chain.push_back (id);
+      }
+    }
+    int ilit = internalize (ewit);
+    internal->add_original_lit (ilit), internal->stats.restored_literals++;
+  }
   for (auto p = begin; p != end; p++) {
+    if (*p == ewit)
+      continue;
     eclause.push_back (*p);
     if (internal->proof && internal->lrat) {
       const auto &elit = *p;
@@ -185,7 +203,7 @@ void External::restore_clauses () {
              satisfied);
         clauses.satisfied++;
       } else {
-        restore_clause (p, end_of_clause, id); // Might taint literals.
+        restore_clause (p, end_of_clause, tlit, id); // Might taint literals.
         clauses.restored++;
       }
 
