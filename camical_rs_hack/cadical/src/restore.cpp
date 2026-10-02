@@ -752,11 +752,13 @@ void External::restore () {
     printf ("witness stacks nonempty: %zu\n", nstacks);
     printf ("witness stacks sizes (bytes): %zu\n", nints * sizeof (int));
     printf ("witness stacks caps (bytes): %zu\n", caps * sizeof (int));
+    /*
     for (unsigned size = 0; size < witness_stack_sizes.size(); ++size)
       if (witness_stack_sizes[size])
         printf("witness stack size %u: %llu\n", size,
                  static_cast<unsigned long long>(
                      witness_stack_sizes[size]));
+    */
   }
 #endif
 
