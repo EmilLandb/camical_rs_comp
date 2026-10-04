@@ -658,19 +658,19 @@ void External::propagate_tainting_c (RestoreStats &clauses) {
     restore_next_c (clauses);
   }
 
-  printf ("tainted_heap_max_size: %zu (bytes)\n", tainted_heap_max_size * sizeof (int));
-  printf ("restore_cutoffs size: %zu (bytes)\n", restore_cutoffs.size () * sizeof (RestoreCutoff));
+  //printf ("tainted_heap_max_size: %zu (bytes)\n", tainted_heap_max_size * sizeof (int));
+  //printf ("restore_cutoffs size: %zu (bytes)\n", restore_cutoffs.size () * sizeof (RestoreCutoff));
   size_t emptied_stacks = 0;
   for (const auto &cutoff : restore_cutoffs) {
     auto &stack = witness_stacks2[cutoff.uwit];
-    stack.truncate (cutoff.idx + 2, witness_pool); // add two for the size and capacity fields
-    stack.shrink_to_fit (witness_pool);
+    stack.truncate (cutoff.idx + 2, arena); // add two for the size and capacity fields
+    stack.shrink_to_fit (arena);
     if (stack.empty ()) {
       emptied_stacks++; // TODO: remove
       u_unmark (witness, cutoff.uwit);
     }
   }
-  printf ("emptied stacks: %zu\n", emptied_stacks);
+  //printf ("emptied stacks: %zu\n", emptied_stacks);
 }
 
 void External::propagate_tainting (RestoreStats &clauses) {
@@ -752,13 +752,22 @@ void External::restore () {
     printf ("witness stacks nonempty: %zu\n", nstacks);
     printf ("witness stacks sizes (bytes): %zu\n", nints * sizeof (int));
     printf ("witness stacks caps (bytes): %zu\n", caps * sizeof (int));
-    /*
-    for (unsigned size = 0; size < witness_stack_sizes.size(); ++size)
-      if (witness_stack_sizes[size])
-        printf("witness stack size %u: %llu\n", size,
-                 static_cast<unsigned long long>(
-                     witness_stack_sizes[size]));
-    */
+    printf ("witness arena stats:\n");
+    printf ("large allocations: %llu\n", arena.stats.large_allocations);
+    printf ("large deallocations: %llu\n", arena.stats.large_deallocations);
+    printf ("shrink count: %llu\n", arena.stats.shrink_count);
+    printf ("shrink bytes saved: %llu\n", arena.stats.shrink_bytes_saved);
+    for (unsigned i = 0; i < WitnessArena::NUM_CLASSES; ++i) {
+      const auto &s = arena.stats;
+      printf ("class %u\n", i);
+      printf ("\tallocations: %llu\n", s.allocations[i]);
+      printf ("\tdeallocations: %llu\n", s.deallocations[i]);
+      printf ("\tchunks: %llu\n", s.chunks[i]);
+      printf ("\tlive: %llu\n", s.live[i]);
+      printf ("\tpeak_live: %llu\n", s.peak_live[i]);
+      printf ("\tgrowths: %llu\n", s.growths[i]);
+    }
+
   }
 #endif
 

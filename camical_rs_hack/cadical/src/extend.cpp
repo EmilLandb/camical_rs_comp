@@ -71,9 +71,9 @@ void External::push_clause_on_extension_stack (int wit, Clause *c) {
 
   auto &stack = witness_stacks2[uwit];
   // Remember the index of the first size field.
-  stack.push_back (0, witness_pool); // Will be updated in the end.
+  stack.push_back (0, arena); // Will be updated in the end.
   const uint32_t first_size_field = stack.size () - 1;
-  stack.push_back (++stamp, witness_pool);
+  stack.push_back (++stamp, arena);
   LOG ("pushing time stamp %u", stamp);
   // We can use the upper 3 bits for flagging if the clause has less than 
   // ~540 million literals.
@@ -86,12 +86,12 @@ void External::push_clause_on_extension_stack (int wit, Clause *c) {
   // If we cannot flag or the id is just to long we push both parts.
   if (!compactable || id_long) {
     LOG ("pushing long id");
-    stack.push_back (static_cast<int> (idu), witness_pool);
-    stack.push_back (static_cast<int> (idl), witness_pool);
+    stack.push_back (static_cast<int> (idu), arena);
+    stack.push_back (static_cast<int> (idl), arena);
   } else {
     assert (!idu);
     LOG ("pushing compact id");
-    stack.push_back (static_cast<int> (idl), witness_pool);
+    stack.push_back (static_cast<int> (idl), arena);
   }
 
   // Now we will push the literals. 
@@ -106,7 +106,7 @@ void External::push_clause_on_extension_stack (int wit, Clause *c) {
         continue;
       }
     LOG ("pushing literal %d (external %d)", lit, elit);
-    stack.push_back (elit, witness_pool);
+    stack.push_back (elit, arena);
   }
 
   // Finally we update the size fields accordingly.
@@ -122,7 +122,7 @@ void External::push_clause_on_extension_stack (int wit, Clause *c) {
   }
   // Update the first size field and push the terminating size field.
   stack.stack[first_size_field] = static_cast<int> (updated_size);
-  stack.push_back (static_cast<int> (updated_size), witness_pool);
+  stack.push_back (static_cast<int> (updated_size), arena);
   LOG (stack.begin (), static_cast<unsigned> (stack.end () - stack.begin ()), "stack now: ");
   if (!marked (witness, ewit)) {
     LOG ("marking as witness %d (external)", ewit);
@@ -145,26 +145,26 @@ void External::push_binary_clause_on_extension_stack (int64_t id, int wit,
     witness_stacks2.resize (uwit + 1); // the witness bitset is resized in mark
 
   auto &stack = witness_stacks2[uwit];
-  stack.push_back (0, witness_pool);
+  stack.push_back (0, arena);
   const uint32_t first_size_field = stack.size () - 1;
   
-  stack.push_back (++stamp, witness_pool);
+  stack.push_back (++stamp, arena);
 
   const bool id_long = id > UINT32_MAX;
   const uint32_t idu = static_cast<uint32_t> (id >> 32);
   const uint32_t idl = static_cast<uint32_t> (id);
 
   if (id_long) {
-    stack.push_back (static_cast<int> (idu), witness_pool);
-    stack.push_back (static_cast<int> (idl), witness_pool);
+    stack.push_back (static_cast<int> (idu), arena);
+    stack.push_back (static_cast<int> (idl), arena);
   } else {
     assert (!idu);
-    stack.push_back (static_cast<int> (idl), witness_pool);
+    stack.push_back (static_cast<int> (idl), arena);
   }
 
   // Here we can definitely make use of witness embedding.
   const int elit = internal->externalize (other);
-  stack.push_back (elit, witness_pool);
+  stack.push_back (elit, arena);
 
   uint32_t updated_size = 1;
   updated_size |= EMBEDDED;
@@ -174,7 +174,7 @@ void External::push_binary_clause_on_extension_stack (int64_t id, int wit,
     updated_size |= ID_LONG;
 
   stack.stack[first_size_field] = static_cast<int> (updated_size);
-  stack.push_back (static_cast<int> (updated_size), witness_pool);
+  stack.push_back (static_cast<int> (updated_size), arena);
 
   if (!marked (witness, ewit)) {
     LOG ("marking as witness %d (external)", ewit);

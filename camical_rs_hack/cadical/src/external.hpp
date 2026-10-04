@@ -143,8 +143,7 @@ struct External {
   bool restoring = false; // for conditionally pushing to tainted_lits in internalize
   vector<int> extension; // Solution reconstruction extension stack.
 
-  pmr::unsynchronized_pool_resource witness_pool{pmr::pool_options{32, 0}};
-  //pmr::unsynchronized_pool_resource witness_pool;
+  WitnessArena arena;
   uint32_t stamp = 0; // Time stamping clauses on the witness stacks.
   vector<vector<int>> witness_stacks; // Reconstruction stacks for each witness.
   vector<WitnessStack> witness_stacks2;
