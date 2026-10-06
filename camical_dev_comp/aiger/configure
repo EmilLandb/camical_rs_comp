@@ -1,0 +1,12 @@
+#!/bin/sh
+COMPILE="gcc -Wall -O3 -DNDEBUG"
+while [ $# -gt 0 ]
+do
+  case $1 in
+    -h) echo "usage: ./configure [-g]"; exit 0;;
+    -g) COMPILE="gcc -Wall -g";;
+    *) echo "configure: error: $*" 1>&2; exit 1;;
+  esac
+  shift
+done
+sed -e "s,@COMPILE@,$COMPILE," makefile.in > makefile
