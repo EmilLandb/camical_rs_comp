@@ -1,0 +1,5 @@
+Compile AIGER in '../aiger/' and CaDiCaL in '../cadical' and then run
+
+  ./configure.sh && make
+
+Armin Biere
